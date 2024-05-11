@@ -27,11 +27,13 @@ class TurtlePub(Node):
                 self.following_correction = 0
                 self.test_count = 0
                 self.last_error = 0
+                self.inside_corner = False
+                self.outside_corner = False
 
 
 
         def scan_callback(self, msg):	
-
+                
 
                 if (not self.seen_wall):
                         self.get_logger().info(f'moving to wall')
@@ -70,7 +72,6 @@ class TurtlePub(Node):
                 msg.angular.z = z
                 self.publisher.publish(msg)
 
-
         def stop_turtle(self):
                 msg = Twist()
 
@@ -79,7 +80,6 @@ class TurtlePub(Node):
                 self.publisher.publish(msg)
                 self.get_logger().info('stopping turtle')
                 time.sleep(0.5)
-
 
         def move_to_wall(self, ranges, simulation=False):
                 if (simulation):
@@ -97,8 +97,6 @@ class TurtlePub(Node):
                                 self.stop_turtle()
                         else:
                                 self.move_turtle()		
-
-
 
         def compute_angular_correction(self, closest_index, simulation=False):
                 if (not simulation):
@@ -122,10 +120,7 @@ class TurtlePub(Node):
                 #		self.get_logger().info(f'correction angle {angular_z}')
 
                 return angular_z * math.pi / 180 
-
-
-
-
+            
         def align_with_wall(self, ranges):
                 closest_index = ranges.index(min(ranges))
                 if self.is_sim:
@@ -139,22 +134,13 @@ class TurtlePub(Node):
                    
                 
                 if self.following_wall:
-                        self.get_logger().info(f'seen wall anf aligning with wall')
+                        self.get_logger().info(f'seen and aligned; now following wall')
 
                         #already following wall so we want to align with next wall
                         
                         self.get_logger().info(f'back_dist = {back_dist}')
 
-                        if (back_dist > self.threshold):
-                                self.rotate_turtle(-math.pi/6)	
-                        else:
-                                if (closest_index > left_ind_min and closest_index < left_ind_max):
-                                        self.get_logger().info(f'aligned')
-                                        self.following_wall = True
-                                        self.aligned = True
-                                        self.stop_turtle()	
-                                else:			
-                                        self.rotate_turtle(-math.pi/6)	
+                        		
                 else:
                         #angular_correction = self.compute_angular_correction(closest_index, self.is_sim)
                         if (closest_index > left_ind_min and closest_index < left_ind_max):
@@ -164,6 +150,19 @@ class TurtlePub(Node):
                                 self.stop_turtle()	
                         else:			
                                 self.rotate_turtle(-math.pi/6)	
+
+        def inside_corner_escape(self,ranges):
+                if self.is_sim:
+                        back_dist = ranges[180]
+                else:
+                        back_dist = ranges[0]  
+
+                if (back_dist > self.threshold):
+                                self.rotate_turtle(-math.pi/6)	
+                elif (back_dist <= self.threshold):
+                                self.stop_turtle()
+                                self.align_with_wall()
+                                self.inside_corner = False 
 
         def follow_wall(self, ranges):
 
@@ -179,15 +178,24 @@ class TurtlePub(Node):
 
 
 
-                #If wall is detected in front
+                #If wall is detected in front (inside corner)
                 if(front_avg < self.threshold):
-                        self.get_logger().info(f'WALL DETECTED')
+                        self.get_logger().info(f'INSIDE CORNER DETECTED')
                         self.get_logger().info(f'is aligned: {self.aligned}')
 
-                        self.stop_turtle()
-                        self.aligned = False
-                        return
+                        self.inside_corner = True
 
+                        self.stop_turtle()
+                        return  
+
+                elif(left_side_avg > 1.5*self.threshold):
+                        self.get_logger().info(f'OUTSIDE CORNER DETECTED')
+
+                        self.outside_corner = True
+
+                        self.stop_turtle()
+                        return
+                        
 
                 #Attempting to mimic PD Control
                 Kp = 0.3  
