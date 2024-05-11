@@ -29,6 +29,7 @@ class TurtlePub(Node):
                 self.last_error = 0
                 self.inside_corner = False
                 self.outside_corner = False
+                self.checks = True
 
 
 
@@ -51,7 +52,6 @@ class TurtlePub(Node):
                                 self.follow_wall(msg.ranges)
                         else:
                                 self.test_count += 1
-
 
         def move_turtle(self, dist=0.3):
                 msg = Twist()
@@ -123,6 +123,7 @@ class TurtlePub(Node):
             
         def align_with_wall(self, ranges):
                 closest_index = ranges.index(min(ranges))
+                self.get_logger().info(f'closest index = {closest_index}')
                 if self.is_sim:
                         left_ind_min = 88
                         left_ind_max = 92
@@ -161,7 +162,9 @@ class TurtlePub(Node):
                                 self.rotate_turtle(-math.pi/6)	
                 elif (back_dist <= self.threshold):
                                 self.stop_turtle()
-                                self.align_with_wall()
+                                self.align_with_wall(ranges)
+                                self.get_logger().info(f'Corner escaped')
+                                self.checks = True
                                 self.inside_corner = False 
 
         def follow_wall(self, ranges):
@@ -177,24 +180,30 @@ class TurtlePub(Node):
                 left_side_avg = sum(left_side_ranges) / len(left_side_ranges)
 
 
+                if(self.checks): # checks for inside or outside corners. If none detected follow wall
+                        if(front_avg < self.threshold):
+                                self.get_logger().info(f'INSIDE CORNER DETECTED')
+                                self.get_logger().info(f'is aligned: {self.aligned}')
 
-                #If wall is detected in front (inside corner)
-                if(front_avg < self.threshold):
-                        self.get_logger().info(f'INSIDE CORNER DETECTED')
-                        self.get_logger().info(f'is aligned: {self.aligned}')
+                                self.inside_corner = True
+                                self.checks = False
 
-                        self.inside_corner = True
+                                self.stop_turtle()
+                                return  
 
-                        self.stop_turtle()
-                        return  
+                        elif(left_side_avg > 1.5*self.threshold):
+                                self.get_logger().info(f'OUTSIDE CORNER DETECTED')
 
-                elif(left_side_avg > 1.5*self.threshold):
-                        self.get_logger().info(f'OUTSIDE CORNER DETECTED')
+                                self.outside_corner = True
+                                self.checks = False
 
-                        self.outside_corner = True
-
-                        self.stop_turtle()
-                        return
+                                self.stop_turtle()
+                                return
+                
+                if(not self.checks):
+                        if(self.inside_corner):
+                                self.inside_corner_escape(ranges)
+                                self.get_logger().info(f'Escaping inside corner')
                         
 
                 #Attempting to mimic PD Control
