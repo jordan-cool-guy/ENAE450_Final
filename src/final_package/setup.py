@@ -20,7 +20,8 @@ setup(
     tests_require=['pytest'],
     entry_points={
         'console_scripts': [
-        "py_maze_node = final_package.maze_runner:main"
+        "py_maze_node = final_package.maze_runner:main",
+        "py_simmaze_node = final_package.simmaze_runner:main"
 		],
     },
 )

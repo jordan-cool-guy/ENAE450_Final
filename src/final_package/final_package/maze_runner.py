@@ -21,7 +21,7 @@ class TurtlePub(Node):
 		self.following_wall = False
 		self.threshold = 0.4
 		#If not sim, set to false
-		self.is_sim = False
+		self.is_sim = True
 		self.aligned_following = False
 		self.damping = False
 		self.following_correction = 0
@@ -78,7 +78,7 @@ class TurtlePub(Node):
 		time.sleep(0.5)
 
 
-	def move_to_wall(self, ranges, simulation=False):
+	def move_to_wall(self, ranges, simulation=True):
 		if (simulation):
 			dist = ranges[0]
 
@@ -97,7 +97,7 @@ class TurtlePub(Node):
 
 
 
-	def compute_angular_correction(self, closest_index, simulation=False):
+	def compute_angular_correction(self, closest_index, simulation=True):
 		if (not simulation):
 			closest_angle = abs(closest_index / 2.0 - 180)
 			if (closest_index > 360):
